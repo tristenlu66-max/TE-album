@@ -1,0 +1,71 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: te-album-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to tehouse server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install deployment SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$DEPLOY_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync MCP service
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_MCP_PATH: ${{ secrets.DEPLOY_MCP_PATH }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude '.env' \
+            --exclude 'node_modules/' \
+            --exclude '*.log' \
+            -e "ssh -p $DEPLOY_PORT" \
+            te-album-mcp/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_MCP_PATH/"
+
+      - name: Sync web frontend
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_WEB_PATH: ${{ secrets.DEPLOY_WEB_PATH }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude 'config.js' \
+            -e "ssh -p $DEPLOY_PORT" \
+            te-album/public/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_WEB_PATH/"
+
+      - name: Install dependencies and restart MCP
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_MCP_PATH: ${{ secrets.DEPLOY_MCP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_MCP_PATH' && npm ci --omit=dev && sudo systemctl restart te-album-mcp && curl -fsS http://127.0.0.1:3011/health"

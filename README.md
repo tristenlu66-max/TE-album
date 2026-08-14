@@ -36,6 +36,24 @@ node server.js
 
 Web 前端可直接由 Nginx 或其他静态文件服务器托管 `te-album/public/`。
 
+## 自动部署
+
+推送到 `main` 后，GitHub Actions 会自动同步：
+
+- `te-album-mcp/` 到服务器 `/srv/te/album-mcp/`
+- `te-album/public/` 到服务器 `/var/www/album/`
+
+部署会保留服务器本地的 `te-album-mcp/.env` 和 `te-album/public/config.js`，不会覆盖密钥配置。
+
+GitHub Secrets 需要包含：
+
+- `DEPLOY_HOST`
+- `DEPLOY_PORT`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_MCP_PATH`
+- `DEPLOY_WEB_PATH`
+
 ## 安全提醒
 
 `SUPABASE_SERVICE_ROLE_KEY`、`ALBUM_MCP_TOKEN`、OAuth 密码和 AI API key 只能放在服务端本地环境变量中，不能复制进浏览器配置或提交到仓库。
