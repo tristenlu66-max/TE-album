@@ -68,4 +68,4 @@ jobs:
           DEPLOY_MCP_PATH: ${{ secrets.DEPLOY_MCP_PATH }}
         run: |
           set -euo pipefail
-          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_MCP_PATH' && npm ci --omit=dev && sudo systemctl restart te-album-mcp && curl -fsS http://127.0.0.1:3011/health"
+          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_MCP_PATH' && npm ci --omit=dev && sudo systemctl restart te-album-mcp && for attempt in \$(seq 1 20); do curl -fsS http://127.0.0.1:3011/health && exit 0; sleep 1; done; sudo systemctl status te-album-mcp --no-pager; exit 1"
