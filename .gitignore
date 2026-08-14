@@ -1,0 +1,10 @@
+# Local secrets and environment configuration
+**/.env
+**/.env.*
+!**/.env.example
+te-album/public/config.js
+
+# Dependencies and runtime artifacts
+**/node_modules/
+**/*.log
+**/.DS_Store
